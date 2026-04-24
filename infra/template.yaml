@@ -1,0 +1,11 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: POC for creating an EC2 instance using GitHub Actions.
+Resources:
+  MyEC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: t2.micro
+      ImageId: ami-098e39bafa7e7303d
+      Tags:
+        - Key: Name
+          Value: GitHub Actions POC Instance
