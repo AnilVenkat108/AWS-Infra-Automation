@@ -1,4 +1,4 @@
-name: Deploy EC2 with CloudFormation
+name: Create AWS resources using AWS CloudFormation Template
 on:
   push:
     branches: [ main ] # Triggers on every push to the main branch
@@ -20,6 +20,6 @@ jobs:
       - name: Deploy CloudFormation Stack
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
-          name: MyEC2Stack
+          name: MyAWSStack
           template: infra/template.yaml
           no-fail-on-empty-changeset: "1" # Prevents workflow failure if no changes occur
