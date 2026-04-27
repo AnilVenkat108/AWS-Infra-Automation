@@ -21,5 +21,5 @@ jobs:
         uses: aws-actions/aws-cloudformation-github-deploy@v1
         with:
           name: MyEC2Stack
-          template: template.yaml
+          template: infra/template.yaml
           no-fail-on-empty-changeset: "1" # Prevents workflow failure if no changes occur
