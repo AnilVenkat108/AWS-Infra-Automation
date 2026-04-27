@@ -1,0 +1,144 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Automated AWS Infra - SNS, Glue, Secrets Manager
+
+Parameters:
+  Environment:
+    Type: String
+    AllowedValues: [dev, test, prod]
+    Description: Deployment environment
+
+  ResourcePrefix:
+    Type: String
+    Description: Prefix for resource naming
+
+  AlertEmail:
+    Type: String
+    Description: Email for SNS subscription
+
+Resources:
+
+  #############################
+  # SNS Topic
+  #############################
+  AlertsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub "${ResourcePrefix}-${Environment}-alerts-topic"
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  AlertsSubscription:
+    Type: AWS::SNS::Subscription
+    Properties:
+      TopicArn: !Ref AlertsTopic
+      Protocol: email
+      Endpoint: !Ref AlertEmail
+
+  #############################
+  # Secrets Manager
+  #############################
+  DBSecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: !Sub "${ResourcePrefix}-${Environment}-db-secret"
+      Description: DB Credentials
+      SecretString: !Sub |
+        {
+          "username": "admin",
+          "password": "ChangeMe123!"
+        }
+      Tags:
+        - Key: Environment
+          Value: !Ref Environment
+
+  #############################
+  # Glue Connection
+  #############################
+  GlueConnection:
+    Type: AWS::Glue::Connection
+    Properties:
+      CatalogId: !Ref AWS::AccountId
+      ConnectionInput:
+        Name: !Sub "${ResourcePrefix}-${Environment}-glue-conn"
+        ConnectionType: JDBC
+        ConnectionProperties:
+          JDBC_CONNECTION_URL: "jdbc:mysql://dummy-host:3306/db"
+          USERNAME: "admin"
+          PASSWORD: "password"
+        PhysicalConnectionRequirements:
+          AvailabilityZone: !Select [0, !GetAZs ""]
+        Description: Dummy JDBC connection
+
+  #############################
+  # Glue Workflow
+  #############################
+  GlueWorkflow:
+    Type: AWS::Glue::Workflow
+    Properties:
+      Name: !Sub "${ResourcePrefix}-${Environment}-workflow"
+      Description: Sample Glue Workflow
+
+  GlueTrigger:
+    Type: AWS::Glue::Trigger
+    Properties:
+      Name: !Sub "${ResourcePrefix}-${Environment}-trigger"
+      Type: SCHEDULED
+      Schedule: "cron(0 12 * * ? *)"
+      Actions:
+        - JobName: !Sub "${ResourcePrefix}-${Environment}-dummy-job"
+      WorkflowName: !Ref GlueWorkflow
+      StartOnCreation: true
+
+  #############################
+  # Dummy Glue Job (Required for Trigger)
+  #############################
+  GlueJob:
+    Type: AWS::Glue::Job
+    Properties:
+      Name: !Sub "${ResourcePrefix}-${Environment}-dummy-job"
+      Role: !GetAtt GlueRole.Arn
+      Command:
+        Name: glueetl
+        ScriptLocation: "s3://dummy-bucket/script.py"
+      GlueVersion: "3.0"
+
+  #############################
+  # IAM Role (Least Privilege)
+  #############################
+  GlueRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${ResourcePrefix}-${Environment}-glue-role"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: glue.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: GlueMinimalPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                  - s3:GetObject
+                Resource: "*"
+
+  #############################
+  # Outputs
+  #############################
+Outputs:
+  SNSArn:
+    Value: !Ref AlertsTopic
+
+  GlueWorkflowName:
+    Value: !Ref GlueWorkflow
+
+  SecretArn:
+    Value: !Ref DBSecret
