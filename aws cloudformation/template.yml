@@ -45,8 +45,8 @@ Resources:
       Description: DB Credentials
       SecretString: !Sub |
         {
-          "username": "admin",
-          "password": "ChangeMe123!"
+          "username": "secrets.USERNAME",
+          "password": "secrets.PASSWORD"
         }
       Tags:
         - Key: Environment
@@ -64,8 +64,8 @@ Resources:
         ConnectionType: JDBC
         ConnectionProperties:
           JDBC_CONNECTION_URL: "jdbc:mysql://dummy-host:3306/db"
-          USERNAME: "admin"
-          PASSWORD: "password"
+          USERNAME: "secrets.USERNAME"
+          PASSWORD: "secrets.PASSWORD"
         PhysicalConnectionRequirements:
           AvailabilityZone: !Select [0, !GetAZs ""]
         Description: Dummy JDBC connection
